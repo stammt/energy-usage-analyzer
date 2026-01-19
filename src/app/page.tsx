@@ -1,65 +1,157 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useMemo } from 'react';
+import { FileUploader } from '@/components/file-uploader';
+import { HomeProfileSettings } from '@/components/home-profile';
+import { EnergyUsageRecord, UtilityType, UnifiedDailyData } from '@/types/energy';
+import { HomeProfile, DEFAULT_PROFILE } from '@/types/profile';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { getCoordinatesFromZip, getHistoricalWeather, DailyWeather } from '@/lib/weather-service';
+import { Loader2 } from 'lucide-react';
+import { unifyData } from '@/lib/analytics';
+import { Dashboard } from '@/components/dashboard';
+import { Insights } from '@/components/insights';
+import { RecommendationList } from '@/components/recommendations';
 
 export default function Home() {
+  const [electricData, setElectricData] = useState<EnergyUsageRecord[]>([]);
+  const [gasData, setGasData] = useState<EnergyUsageRecord[]>([]);
+  const [profile, setProfile] = useState<HomeProfile>(DEFAULT_PROFILE);
+  const [weatherData, setWeatherData] = useState<DailyWeather[]>([]);
+  const [loadingWeather, setLoadingWeather] = useState(false);
+  const [unifiedData, setUnifiedData] = useState<UnifiedDailyData[]>([]);
+
+  // Effect to unify data whenever inputs change
+  useMemo(() => {
+    if ((electricData.length > 0 || gasData.length > 0) && weatherData.length > 0) {
+      const unified = unifyData(electricData, gasData, weatherData);
+      setUnifiedData(unified);
+    }
+  }, [electricData, gasData, weatherData]);
+
+  const handleDataLoaded = (data: EnergyUsageRecord[], type: UtilityType) => {
+    if (type === 'electric') {
+      setElectricData(data);
+    } else {
+      setGasData(data);
+    }
+  };
+
+  const fetchWeather = async () => {
+    if (!profile.zipCode || profile.zipCode.length < 5) {
+      alert("Please enter a valid Zip Code first.");
+      return;
+    }
+
+    // Determine date range from loaded data
+    const allRecords = [...electricData, ...gasData];
+    if (allRecords.length === 0) return;
+
+    // Find min/max dates
+    // Note: This is simple; ideally handling gaps
+    allRecords.sort((a, b) => a.date.getTime() - b.date.getTime());
+    const startDate = allRecords[0].date;
+    const endDate = allRecords[allRecords.length - 1].date;
+
+    setLoadingWeather(true);
+    try {
+      const coords = await getCoordinatesFromZip(profile.zipCode);
+      if (!coords) {
+        alert("Could not find location for Zip Code.");
+        return;
+      }
+
+      const weather = await getHistoricalWeather(coords.latitude, coords.longitude, startDate, endDate);
+      setWeatherData(weather);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch weather data.");
+    } finally {
+      setLoadingWeather(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 p-8">
+      <div className="max-w-4xl mx-auto space-y-8">
+
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            Energy Usage Analyzer
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-muted-foreground">
+            Upload your utility data to visualize patterns and find savings.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <HomeProfileSettings profile={profile} onChange={setProfile} />
+
+        {unifiedData.length > 0 && (
+          <>
+            <Insights data={unifiedData} />
+            <RecommendationList data={unifiedData} />
+            <Dashboard data={unifiedData} />
+          </>
+        )}
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <FileUploader onDataLoaded={handleDataLoaded} />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Data Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Electric Records</p>
+                    <p className="text-2xl font-bold">{electricData.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Gas Records</p>
+                    <p className="text-2xl font-bold">{gasData.length}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Weather Data</p>
+                  {weatherData.length > 0 ? (
+                    <p className="text-green-600 font-medium flex items-center gap-2">
+                      Loaded {weatherData.length} days of history
+                    </p>
+                  ) : (
+                    <Button
+                      onClick={fetchWeather}
+                      disabled={loadingWeather || (electricData.length === 0 && gasData.length === 0)}
+                      className="w-full"
+                    >
+                      {loadingWeather && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {loadingWeather ? "Fetching..." : "Fetch Weather History"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </main>
+
+        {/* Temporary Raw Data View for Debugging */}
+        {(electricData.length > 0 || gasData.length > 0) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Loaded Data Preview</CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-64 overflow-auto text-xs font-mono">
+              <pre>
+                {JSON.stringify({ electric: electricData.slice(0, 3), gas: gasData.slice(0, 3) }, null, 2)}
+              </pre>
+            </CardContent>
+          </Card>
+        )}
+
+      </div>
     </div>
   );
 }
