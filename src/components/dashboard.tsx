@@ -20,9 +20,10 @@ import {
 
 interface DashboardProps {
     data: UnifiedDailyData[];
+    onDateSelect?: (date: string) => void;
 }
 
-export function Dashboard({ data }: DashboardProps) {
+export function Dashboard({ data, onDateSelect }: DashboardProps) {
     const [viewMode, setViewMode] = useState<'combined_kwh' | 'electric' | 'gas'>('combined_kwh');
 
     // Prepare data for the chart based on view mode
@@ -67,7 +68,17 @@ export function Dashboard({ data }: DashboardProps) {
                 <CardContent>
                     <div className="h-[400px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                            <ComposedChart
+                                data={chartData}
+                                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                                onClick={(e: any) => {
+                                    if (e && e.activePayload && e.activePayload.length > 0) {
+                                        const date = e.activePayload[0].payload.date;
+                                        if (onDateSelect) onDateSelect(date);
+                                    }
+                                }}
+                                style={{ cursor: 'pointer' }}
+                            >
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis
                                     dataKey="dateShort"
@@ -94,6 +105,7 @@ export function Dashboard({ data }: DashboardProps) {
                                     unit="°F"
                                 />
                                 <Tooltip
+                                    cursor={{ fill: 'rgba(0,0,0,0.1)' }}
                                     contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px' }}
                                     labelFormatter={(label) => `Date: ${label}`}
                                 />
@@ -113,17 +125,47 @@ export function Dashboard({ data }: DashboardProps) {
                                 {/* Bars based on View Mode */}
                                 {viewMode === 'combined_kwh' && (
                                     <>
-                                        <Bar yAxisId="left" dataKey="electricUsageKwh" name="Electric (kWh)" stackId="a" fill="#3b82f6" />
-                                        <Bar yAxisId="left" dataKey="gasKwh" name="Gas (as kWh)" stackId="a" fill="#ef4444" />
+                                        <Bar
+                                            yAxisId="left"
+                                            dataKey="electricUsageKwh"
+                                            name="Electric (kWh)"
+                                            stackId="a"
+                                            fill="#3b82f6"
+                                            onClick={(data: any) => onDateSelect && onDateSelect(data.date)}
+                                            cursor="pointer"
+                                        />
+                                        <Bar
+                                            yAxisId="left"
+                                            dataKey="gasKwh"
+                                            name="Gas (as kWh)"
+                                            stackId="a"
+                                            fill="#ef4444"
+                                            onClick={(data: any) => onDateSelect && onDateSelect(data.date)}
+                                            cursor="pointer"
+                                        />
                                     </>
                                 )}
 
                                 {viewMode === 'electric' && (
-                                    <Bar yAxisId="left" dataKey="electricUsageKwh" name="Electric (kWh)" fill="#3b82f6" />
+                                    <Bar
+                                        yAxisId="left"
+                                        dataKey="electricUsageKwh"
+                                        name="Electric (kWh)"
+                                        fill="#3b82f6"
+                                        onClick={(data: any) => onDateSelect && onDateSelect(data.date)}
+                                        cursor="pointer"
+                                    />
                                 )}
 
                                 {viewMode === 'gas' && (
-                                    <Bar yAxisId="left" dataKey="gasUsageTherms" name="Gas (Therms)" fill="#ef4444" />
+                                    <Bar
+                                        yAxisId="left"
+                                        dataKey="gasUsageTherms"
+                                        name="Gas (Therms)"
+                                        fill="#ef4444"
+                                        onClick={(data: any) => onDateSelect && onDateSelect(data.date)}
+                                        cursor="pointer"
+                                    />
                                 )}
 
                             </ComposedChart>

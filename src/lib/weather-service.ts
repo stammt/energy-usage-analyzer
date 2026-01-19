@@ -10,7 +10,6 @@ export async function getCoordinatesFromZip(zipCode: string): Promise<GeoLocatio
     if (!zipCode || zipCode.length < 5) return null;
 
     // Use Zippopotam.us for Zip Code lookup (Free, No Key)
-    // http://api.zippopotam.us/us/20723
     try {
         const res = await fetch(`http://api.zippopotam.us/us/${zipCode}`);
         if (!res.ok) return null;
@@ -40,41 +39,61 @@ export interface DailyWeather {
     maxTempF: number;
 }
 
+export interface HourlyWeather {
+    time: string; // ISO String or YYYY-MM-DDTHH:mm
+    tempF: number;
+}
+
+export interface WeatherData {
+    daily: DailyWeather[];
+    hourly: HourlyWeather[];
+}
+
 export async function getHistoricalWeather(
     lat: number,
     lon: number,
     startDate: Date,
     endDate: Date
-): Promise<DailyWeather[]> {
+): Promise<WeatherData> {
     // Format dates as YYYY-MM-DD
     const startStr = startDate.toISOString().split('T')[0];
     const endStr = endDate.toISOString().split('T')[0];
 
     // Open-Meteo Archive API
-    // https://archive-api.open-meteo.com/v1/archive?latitude=52.52&longitude=13.41&start_date=2023-01-01&end_date=2023-12-31&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean&temperature_unit=fahrenheit&timezone=auto
-
-    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${startStr}&end_date=${endStr}&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean&temperature_unit=fahrenheit&timezone=auto`;
+    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${startStr}&end_date=${endStr}&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean&hourly=temperature_2m&temperature_unit=fahrenheit&timezone=auto`;
 
     try {
         const res = await fetch(url);
         const data = await res.json();
 
-        if (!data.daily) throw new Error("No daily data received");
+        if (!data.daily || !data.hourly) throw new Error("No data received");
 
+        // Process Daily
         const dates = data.daily.time as string[];
         const means = data.daily.temperature_2m_mean as number[];
         const maxs = data.daily.temperature_2m_max as number[];
         const mins = data.daily.temperature_2m_min as number[];
 
-        return dates.map((date, i) => ({
+        const daily = dates.map((date, i) => ({
             date,
             avgTempF: means[i],
             maxTempF: maxs[i],
             minTempF: mins[i]
         }));
 
+        // Process Hourly
+        const times = data.hourly.time as string[];
+        const temps = data.hourly.temperature_2m as number[];
+
+        const hourly = times.map((time, i) => ({
+            time,
+            tempF: temps[i]
+        }));
+
+        return { daily, hourly };
+
     } catch (error) {
         console.error("Weather fetch failed", error);
-        return [];
+        return { daily: [], hourly: [] };
     }
 }

@@ -7,18 +7,21 @@ import { EnergyUsageRecord, UtilityType, UnifiedDailyData } from '@/types/energy
 import { HomeProfile, DEFAULT_PROFILE } from '@/types/profile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getCoordinatesFromZip, getHistoricalWeather, DailyWeather } from '@/lib/weather-service';
+import { getCoordinatesFromZip, getHistoricalWeather, DailyWeather, HourlyWeather } from '@/lib/weather-service';
 import { Loader2 } from 'lucide-react';
 import { unifyData } from '@/lib/analytics';
 import { Dashboard } from '@/components/dashboard';
 import { Insights } from '@/components/insights';
 import { RecommendationList } from '@/components/recommendations';
+import { HourlyUsageChart } from '@/components/hourly-chart';
 
 export default function Home() {
   const [electricData, setElectricData] = useState<EnergyUsageRecord[]>([]);
   const [gasData, setGasData] = useState<EnergyUsageRecord[]>([]);
   const [profile, setProfile] = useState<HomeProfile>(DEFAULT_PROFILE);
   const [weatherData, setWeatherData] = useState<DailyWeather[]>([]);
+  const [hourlyWeather, setHourlyWeather] = useState<HourlyWeather[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [unifiedData, setUnifiedData] = useState<UnifiedDailyData[]>([]);
 
@@ -63,7 +66,8 @@ export default function Home() {
       }
 
       const weather = await getHistoricalWeather(coords.latitude, coords.longitude, startDate, endDate);
-      setWeatherData(weather);
+      setWeatherData(weather.daily);
+      setHourlyWeather(weather.hourly);
     } catch (err) {
       console.error(err);
       alert("Failed to fetch weather data.");
@@ -91,12 +95,26 @@ export default function Home() {
           <>
             <Insights data={unifiedData} />
             <RecommendationList data={unifiedData} />
-            <Dashboard data={unifiedData} />
+            <Dashboard
+              data={unifiedData}
+              onDateSelect={setSelectedDate}
+            />
           </>
         )}
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <FileUploader onDataLoaded={handleDataLoaded} />
+        {selectedDate && (
+          <HourlyUsageChart
+            date={selectedDate}
+            electricData={electricData}
+            gasData={gasData}
+            hourlyWeather={hourlyWeather}
+            onClose={() => setSelectedDate(null)}
+          />
+        )}
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <FileUploader forcedType="electric" onDataLoaded={handleDataLoaded} />
+          <FileUploader forcedType="gas" onDataLoaded={handleDataLoaded} />
 
           <Card>
             <CardHeader>
