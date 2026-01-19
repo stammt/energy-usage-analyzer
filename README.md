@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Energy Usage Analyzer
 
-## Getting Started
+I have successfully built the Energy Usage Analyzer application. This tool allows you to upload utility data, correlate it with historical weather, and gain actionable insights into your home's energy efficiency.
 
-First, run the development server:
+## Features Implemented
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 1. Data Ingestion
+- **File Upload**: Drag & drop support for utility CSV files.
+- **Intelligent Parsing**: Automatically detects Date and Usage columns (supporting Hours, Therms, kWh).
+- **Home Profile**: Configuration for Heating Source, Cooling Source, and Zip Code.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Weather Integration
+- **Geocoding**: Converts Zip Code to Latitude/Longitude using Zippopotam.us.
+- **Historical Weather**: Fetches daily temperature data from Open-Meteo matching your exact usage dates.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Analytics Engine
+- **Data Unification**: Merges disparate utility logs (Electric/Gas) with weather data into a unified daily view.
+- **Unit Conversion**: robustly converts Gas Therms to kWh for "Total Energy" analysis.
+- **Regression Analysis**: Calculates:
+    -   **Base Load**: Your "always on" energy usage.
+    -   **Heating Slope**: kWh used per Heating Degree Day (HDD).
+    -   **Cooling Slope**: kWh used per Cooling Degree Day (CDD).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Visualization & Insights
+- **Interactive Dashboard**: Composed chart showing Energy Usage bars vs. Temperature line.
+- **Insight Cards**: Quick summary of your efficiency metrics (e.g., "Heating Sensitivity: 3.2 kWh/HDD").
+- **Recommendations**: Tailored energy-saving tips based on your specific analysis results.
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+- `src/app/page.tsx`: Main application controller.
+- `src/components/file-uploader.tsx`: CSV parsing logic.
+- `src/components/dashboard.tsx`: Recharts visualization.
+- `src/components/insights.tsx`: Metrics display.
+- `src/components/recommendations.tsx`: Logic for generating tips.
+- `src/lib/analytics.ts`: Core math engine (Regression, HDD/CDD).
+- `src/lib/weather-service.ts`: API integration.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Usage Guide
+1.  **Upload**: Drag your CSV file into the upload box.
+2.  **Configure**: Enter your Zip Code and select your heating type in the form.
+3.  **Fetch Weather**: Click the button to pull historical data.
+4.  **Analyze**: View the dashboard, check your specific "Heating Slope", and read the recommendations to save money!
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Running Locally
 
-## Deploy on Vercel
+1.  **Install Dependencies**:
+    ```bash
+    npm install
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2.  **Start Development Server**:
+    ```bash
+    npm run dev
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3.  **Open Browser**:
+    Navigate to [http://localhost:3000](http://localhost:3000).
